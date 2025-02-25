@@ -3,6 +3,33 @@ import pandas as pd
 import os
 import matplotlib.pyplot as plt
 
+# Authentication Details
+CORRECT_USERNAME = "addakin"
+CORRECT_PASSWORD = "3Clacrosse#1"
+
+# Initialize session state for login
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+# Login Page
+def login():
+    st.title("🔐 Login to Access Dashboard")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    login_button = st.button("Login")
+
+    if login_button:
+        if username == CORRECT_USERNAME and password == CORRECT_PASSWORD:
+            st.session_state.authenticated = True
+            st.experimental_rerun()
+        else:
+            st.error("❌ Incorrect username or password. Try again.")
+
+# If not authenticated, show login page
+if not st.session_state.authenticated:
+    login()
+    st.stop()  # Prevents the rest of the app from loading if not logged in
+
 # Define file path dynamically
 csv_file = "Finances/Addakin/streamlit/finances.csv"
 feedback_folder = "Finances/Addakin/data"
@@ -21,7 +48,7 @@ def load_data():
 if not os.path.exists(feedback_folder):
     os.makedirs(feedback_folder)
 
-# Streamlit UI
+# Streamlit UI (Only visible after successful login)
 st.set_page_config(layout="wide")
 st.title("📊 Addakin's Financial Overview")
 
@@ -36,7 +63,12 @@ else:
     # Standardize 'month' column
     df['month'] = df['month'].str.capitalize()
 
-    # Sidebar Filters (Remove "All" option)
+    # Sidebar Logout Button
+    if st.sidebar.button("🚪 Logout"):
+        st.session_state.authenticated = False
+        st.experimental_rerun()
+
+    # Sidebar Filters
     st.sidebar.header("📅 Filter by Month")
     selected_month = st.sidebar.radio("Select a month", months_ordered)
 
@@ -96,7 +128,6 @@ else:
                 plt.tight_layout()
                 st.pyplot(fig)
 
-
             with col2:
                 st.subheader("📊 Spending Distribution")
 
@@ -122,7 +153,6 @@ else:
                 # Improve label placement
                 plt.tight_layout()
                 st.pyplot(fig)
-
 
             # **Full-Width YTD Line Chart**
             st.subheader("📈 Year-To-Date (YTD) Spending Trends")
@@ -150,33 +180,7 @@ else:
         else:
             st.warning(f"⚠️ No spending transactions found for {selected_month}.")
 
-    with tab2:
-        st.subheader(f"💰 Saving Transactions - {selected_month}")
-        saving_df = filtered_df[filtered_df['action'].str.lower() == 'save']
-        if not saving_df.empty:
-            st.dataframe(saving_df)
-        else:
-            st.warning(f"⚠️ No saving transactions found for {selected_month}.")
-
-    with tab3:
-        st.subheader(f"📈 Income Transactions - {selected_month}")
-        income_df = filtered_df[filtered_df['action'].str.lower() == 'income']
-        if not income_df.empty:
-            st.dataframe(income_df)
-        else:
-            st.warning(f"⚠️ No income transactions found for {selected_month}.")
-
-    with tab4:
-        st.subheader(f"❓ Uncategorized Transactions - {selected_month}")
-        if not uncategorized_df.empty:
-            st.dataframe(uncategorized_df)
-        else:
-            st.warning(f"⚠️ No uncategorized transactions found for {selected_month}.")
-
-    # Feedback Section
-    st.sidebar.subheader("💡 Feedback & Suggestions")
-    feedback_text = st.sidebar.text_area("How can we improve this dashboard?")
-    if st.sidebar.button("Submit Feedback"):
-        with open(feedback_file, "a") as f:
-            f.write(feedback_text + "\n")
-        st.sidebar.success("✅ Thank you for your feedback!")
+    # Sidebar Logout Button
+    if st.sidebar.button("🚪 Logout"):
+        st.session_state.authenticated = False
+        st.experimental_rerun()
