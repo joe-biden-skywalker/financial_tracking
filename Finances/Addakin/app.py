@@ -67,7 +67,7 @@ df['month'] = df['month'].str.capitalize()
 # Sidebar Logout Button (Fixed with unique key)
 if st.sidebar.button("🚪 Logout", key="logout_button_unique"):
     st.session_state.authenticated = False
-    st.experimental_rerun()
+    st.rerun()
 
 # Sidebar Filters
 st.sidebar.header("📅 Filter by Month")
