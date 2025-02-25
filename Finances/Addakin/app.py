@@ -157,4 +157,37 @@ with tab4:
     uncategorized_df = df[df['category'] == "Other"]
 
     if not uncategorized_df.empty:
-        st.write("### 🚨 Transactions Without a
+        st.write("### 🚨 Transactions Without a Category")  # 🔥 Fixed Line 🔥
+        st.dataframe(uncategorized_df)
+    else:
+        st.success("✅ No uncategorized transactions found!")
+
+    # Load and display category mapping file (Centered)
+    category_mapping_df = load_category_mapping()
+    st.markdown("<h4 style='text-align: center;'>🔍 Current Category Mappings</h4>", unsafe_allow_html=True)
+    st.dataframe(category_mapping_df)
+
+    # Form for adding new category mappings
+    st.write("### ➕ Add New Category Mapping")
+    with st.form("add_category_mapping"):
+        keyword = st.text_input("Enter Keyword (e.g., 'Uber', 'Starbucks')").strip()
+        category = st.text_input("Enter Category (e.g., 'Transport', 'Dining')").strip()
+        submit_button = st.form_submit_button("Add Mapping")
+
+    if submit_button:
+        if keyword and category:
+            if save_category_mapping(keyword, category):
+                st.success(f"✅ Mapping added: '{keyword}' → '{category}'")
+            else:
+                st.warning("⚠️ This mapping already exists.")
+            st.rerun()
+        else:
+            st.error("❌ Both Keyword and Category are required!")
+
+    # Delete category mappings
+    st.write("### ❌ Delete a Category Mapping")
+    keyword_to_delete = st.selectbox("Select a keyword to delete", category_mapping_df["Keyword"].unique(), key="delete_select")
+    if st.button("Delete Mapping", key="delete_button"):
+        delete_category_mapping(keyword_to_delete)
+        st.success(f"✅ Deleted mapping: '{keyword_to_delete}'")
+        st.rerun()
