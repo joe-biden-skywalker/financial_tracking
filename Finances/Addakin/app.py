@@ -21,7 +21,7 @@ def login():
     if login_button:
         if username == CORRECT_USERNAME and password == CORRECT_PASSWORD:
             st.session_state.authenticated = True
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("❌ Incorrect username or password. Try again.")
 
