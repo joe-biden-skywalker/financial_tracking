@@ -16,7 +16,7 @@ def login():
     st.title("🔐 Login to Access Dashboard")
     username = st.text_input("Username")
     password = st.text_input("Password", type="password")
-    login_button = st.button("Login", key="login_button")  # Unique key assigned
+    login_button = st.button("Login", key="login_button_unique")  # Unique key assigned
 
     if login_button:
         if username == CORRECT_USERNAME and password == CORRECT_PASSWORD:
@@ -42,6 +42,7 @@ def load_data():
         df.columns = df.columns.str.lower().str.strip()  # Normalize column names to lowercase and remove spaces
         return df
     except FileNotFoundError:
+        st.error(f"❌ CSV file not found at: {csv_file}")
         return None
 
 # Create feedback directory if not exists
@@ -55,127 +56,81 @@ st.title("📊 Addakin's Financial Overview")
 df = load_data()
 
 if df is None:
-    st.error(f"❌ CSV file not found at: {csv_file}")
-else:
-    months_ordered = ["January", "February", "March", "April", "May", "June", "July", 
-                      "August", "September", "October", "November", "December"]
+    st.stop()  # Prevent further execution if CSV is missing
 
-    # Standardize 'month' column
-    df['month'] = df['month'].str.capitalize()
+months_ordered = ["January", "February", "March", "April", "May", "June", "July", 
+                  "August", "September", "October", "November", "December"]
 
-    # Sidebar Logout Button (Fixed with unique key)
-    if st.sidebar.button("🚪 Logout", key="logout_button_sidebar"):
-        st.session_state.authenticated = False
-        st.experimental_rerun()
+# Standardize 'month' column
+df['month'] = df['month'].str.capitalize()
 
-    # Sidebar Filters
-    st.sidebar.header("📅 Filter by Month")
-    selected_month = st.sidebar.radio("Select a month", months_ordered)
+# Sidebar Logout Button (Fixed with unique key)
+if st.sidebar.button("🚪 Logout", key="logout_button_unique"):
+    st.session_state.authenticated = False
+    st.experimental_rerun()
 
-    # **Create a filtered copy for transactions (but NOT for YTD Chart)**
-    filtered_df = df[df['month'] == selected_month]
+# Sidebar Filters
+st.sidebar.header("📅 Filter by Month")
+selected_month = st.sidebar.radio("Select a month", months_ordered)
 
-    # Categorize "Other"
-    df.loc[df['category'].str.lower() == 'other', 'category'] = 'Other'
-    uncategorized_df = df[df['category'] == 'Other']
-    df = df[df['category'] != 'Other']
+# **Create a filtered copy for transactions (but NOT for YTD Chart)**
+filtered_df = df[df['month'] == selected_month]
 
-    # Tabs
-    tab1, tab2, tab3, tab4 = st.tabs(["💸 Spending", "💰 Saving", "📈 Income", "❓ Uncategorized Transactions"])
+# Categorize "Other"
+df.loc[df['category'].str.lower() == 'other', 'category'] = 'Other'
+uncategorized_df = df[df['category'] == 'Other']
+df = df[df['category'] != 'Other']
 
-    with tab1:
-        st.subheader(f"📊 Spending Analysis - {selected_month}")
+# Tabs
+tab1, tab2, tab3, tab4 = st.tabs(["💸 Spending", "💰 Saving", "📈 Income", "❓ Uncategorized Transactions"])
 
-        spending_df = filtered_df[filtered_df['action'].str.lower() == 'spend']
-        
-        if not spending_df.empty:
-            # **Spending Breakdown Analysis**
-            category_spending = spending_df.groupby('category')['amount'].sum().sort_values(ascending=False)
+with tab1:
+    st.subheader(f"📊 Spending Analysis - {selected_month}")
 
-            # **Create two columns for side-by-side charts**
-            col1, col2 = st.columns(2)
+    spending_df = filtered_df[filtered_df['action'].str.lower() == 'spend']
+    
+    if not spending_df.empty:
+        # **Spending Breakdown Analysis**
+        category_spending = spending_df.groupby('category')['amount'].sum().sort_values(ascending=False)
 
-            with col1:
-                st.subheader("💰 Spending per Category")
+        # **Create two columns for side-by-side charts**
+        col1, col2 = st.columns(2)
 
-                # Improve readability by increasing figure size
-                fig, ax = plt.subplots(figsize=(10, 5))
+        with col1:
+            st.subheader("💰 Spending per Category")
 
-                # Sort categories by spending (descending order)
-                category_spending = category_spending.sort_values(ascending=True)
+            # Improve readability by increasing figure size
+            fig, ax = plt.subplots(figsize=(10, 5))
 
-                # Use a better color palette
-                colors = plt.cm.Paired.colors  
+            # Sort categories by spending (descending order)
+            category_spending = category_spending.sort_values(ascending=True)
 
-                # Create bar plot
-                category_spending.plot(
-                    kind="barh",
-                    ax=ax,
-                    color=colors,
-                    alpha=0.8  # Slight transparency for aesthetic appeal
-                )
+            # Use a better color palette
+            colors = plt.cm.Paired.colors  
 
-                ax.set_xlabel("Total Spent ($)")
-                ax.set_ylabel("Category")
-                ax.set_title(f"Total Spending by Category ({selected_month})")
+            # Create bar plot
+            category_spending.plot(
+                kind="barh",
+                ax=ax,
+                color=colors,
+                alpha=0.8  # Slight transparency for aesthetic appeal
+            )
 
-                # Add data labels
-                for i, value in enumerate(category_spending):
-                    ax.text(value + 50, i, f"${value:,.0f}", va="center", fontsize=10, fontweight="bold")
+            ax.set_xlabel("Total Spent ($)")
+            ax.set_ylabel("Category")
+            ax.set_title(f"Total Spending by Category ({selected_month})")
 
-                # Improve layout
-                plt.grid(axis="x", linestyle="--", alpha=0.5)
-                plt.tight_layout()
-                st.pyplot(fig)
+            # Add data labels
+            for i, value in enumerate(category_spending):
+                ax.text(value + 50, i, f"${value:,.0f}", va="center", fontsize=10, fontweight="bold")
 
-            with col2:
-                st.subheader("📊 Spending Distribution")
-
-                # Improve readability by increasing figure size and adjusting labels
-                fig, ax = plt.subplots(figsize=(8, 6))  # Larger figure
-                colors = plt.cm.Paired.colors  # Distinct color palette
-                explode = [0.1 if pct > 10 else 0 for pct in category_spending / category_spending.sum() * 100]  # Explode big slices
-
-                category_spending.plot(
-                    kind="pie",
-                    ax=ax,
-                    autopct='%1.1f%%',  # Show percentages
-                    startangle=140,
-                    cmap="coolwarm",
-                    pctdistance=0.85,  # Moves % labels closer to center
-                    colors=colors,
-                    explode=explode
-                )
-
-                ax.set_ylabel("")  # Hide y-axis label
-                ax.set_title(f"Spending Breakdown by Category ({selected_month})")
-
-                # Improve label placement
-                plt.tight_layout()
-                st.pyplot(fig)
-
-            # **Full-Width YTD Line Chart**
-            st.subheader("📈 Year-To-Date (YTD) Spending Trends")
-
-            # Aggregate spending per category per month (full year)
-            ytd_spending = df[df['action'].str.lower() == 'spend'].groupby(['month', 'category'])['amount'].sum().unstack()
-
-            # Reorder months based on the defined sequence
-            ytd_spending = ytd_spending.reindex(months_ordered)
-
-            # **Line Chart (YTD)**
-            fig, ax = plt.subplots(figsize=(12, 6))
-            ytd_spending.plot(kind='line', marker='o', ax=ax)
-            ax.set_ylabel("Total Spent ($)")
-            ax.set_xlabel("Month")
-            ax.set_title("YTD Spending Trends by Category")
-            plt.xticks(rotation=45)
-            plt.legend(title="Category", bbox_to_anchor=(1.05, 1), loc='upper left')
+            # Improve layout
+            plt.grid(axis="x", linestyle="--", alpha=0.5)
+            plt.tight_layout()
             st.pyplot(fig)
 
-            # **Spending Transactions Table (Bottom)**
-            st.subheader(f"📑 Spending Transactions - {selected_month}")
-            st.dataframe(spending_df)
+        with col2:
+            st.subheader("📊 Spending Distribution")
 
-        else:
-            st.warning(f"⚠️ No spending transactions found for {selected_month}.")
+            # Improve readability by increasing figure size and adjusting labels
+            fig,
