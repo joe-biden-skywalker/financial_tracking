@@ -4,7 +4,7 @@ import os
 import matplotlib.pyplot as plt
 
 # Define file path dynamically
-csv_file = "/Users/addakinthomas/Desktop/Finances/Addakin/streamlit/finances.csv"
+csv_file = "Finances/Addakin/streamlit/finances.csv"
 feedback_folder = "feedback"
 feedback_file = os.path.join(feedback_folder, "feedback.txt")
 
