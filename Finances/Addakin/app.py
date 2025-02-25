@@ -133,4 +133,50 @@ with tab1:
             st.subheader("📊 Spending Distribution")
 
             # Improve readability by increasing figure size and adjusting labels
-            fig,
+            fig, ax = plt.subplots(figsize=(8, 6))  # Larger figure
+            colors = plt.cm.Paired.colors  # Distinct color palette
+            explode = [0.1 if pct > 10 else 0 for pct in category_spending / category_spending.sum() * 100]  # Explode big slices
+
+            category_spending.plot(
+                kind="pie",
+                ax=ax,
+                autopct='%1.1f%%',  # Show percentages
+                startangle=140,
+                cmap="coolwarm",
+                pctdistance=0.85,  # Moves % labels closer to center
+                colors=colors,
+                explode=explode
+            )
+
+            ax.set_ylabel("")  # Hide y-axis label
+            ax.set_title(f"Spending Breakdown by Category ({selected_month})")
+
+            # Improve label placement
+            plt.tight_layout()
+            st.pyplot(fig)
+
+        # **Full-Width YTD Line Chart**
+        st.subheader("📈 Year-To-Date (YTD) Spending Trends")
+
+        # Aggregate spending per category per month (full year)
+        ytd_spending = df[df['action'].str.lower() == 'spend'].groupby(['month', 'category'])['amount'].sum().unstack()
+
+        # Reorder months based on the defined sequence
+        ytd_spending = ytd_spending.reindex(months_ordered)
+
+        # **Line Chart (YTD)**
+        fig, ax = plt.subplots(figsize=(12, 6))
+        ytd_spending.plot(kind='line', marker='o', ax=ax)
+        ax.set_ylabel("Total Spent ($)")
+        ax.set_xlabel("Month")
+        ax.set_title("YTD Spending Trends by Category")
+        plt.xticks(rotation=45)
+        plt.legend(title="Category", bbox_to_anchor=(1.05, 1), loc='upper left')
+        st.pyplot(fig)
+
+        # **Spending Transactions Table (Bottom)**
+        st.subheader(f"📑 Spending Transactions - {selected_month}")
+        st.dataframe(spending_df)
+
+    else:
+        st.warning(f"⚠️ No spending transactions found for {selected_month}.")
