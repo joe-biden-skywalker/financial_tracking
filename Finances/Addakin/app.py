@@ -16,7 +16,7 @@ def login():
     st.title("🔐 Login to Access Dashboard")
     username = st.text_input("Username")
     password = st.text_input("Password", type="password")
-    login_button = st.button("Login")
+    login_button = st.button("Login", key="login_button")  # Unique key assigned
 
     if login_button:
         if username == CORRECT_USERNAME and password == CORRECT_PASSWORD:
@@ -63,8 +63,8 @@ else:
     # Standardize 'month' column
     df['month'] = df['month'].str.capitalize()
 
-    # Sidebar Logout Button
-    if st.sidebar.button("🚪 Logout"):
+    # Sidebar Logout Button (Fixed with unique key)
+    if st.sidebar.button("🚪 Logout", key="logout_button_sidebar"):
         st.session_state.authenticated = False
         st.experimental_rerun()
 
@@ -179,8 +179,3 @@ else:
 
         else:
             st.warning(f"⚠️ No spending transactions found for {selected_month}.")
-
-    # Sidebar Logout Button
-    if st.sidebar.button("🚪 Logout"):
-        st.session_state.authenticated = False
-        st.experimental_rerun()
