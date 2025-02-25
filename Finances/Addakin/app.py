@@ -33,13 +33,12 @@ if not st.session_state.authenticated:
 # File paths
 csv_file = "Finances/Addakin/streamlit/finances.csv"
 category_mapping_file = "Finances/Addakin/spending_categories.csv"
-feedback_folder = "Finances/Addakin/data"
 
 # Load CSV data safely
 def load_data():
     try:
         df = pd.read_csv(csv_file)
-        df.columns = df.columns.str.lower().str.strip()  # Normalize column names
+        df.columns = df.columns.str.lower().str.strip()
         return df
     except FileNotFoundError:
         st.error(f"❌ CSV file not found at: {csv_file}")
@@ -50,16 +49,38 @@ def load_category_mapping():
     try:
         return pd.read_csv(category_mapping_file)
     except FileNotFoundError:
-        return pd.DataFrame(columns=["Keyword", "Category"])  # Return empty DataFrame if missing
+        return pd.DataFrame(columns=["Keyword", "Category"])
 
 # Save new category mapping
-def save_category_mapping(df):
+def save_category_mapping(keyword, category):
+    df = load_category_mapping()
+    if not df.empty and ((df['Keyword'] == keyword) & (df['Category'] == category)).any():
+        return False  # Mapping already exists
+    
+    new_mapping = pd.DataFrame([[keyword, category]], columns=["Keyword", "Category"])
+    new_mapping.to_csv(category_mapping_file, mode='a', header=False, index=False)
+    return True
+
+# Delete category mapping
+def delete_category_mapping(keyword):
+    df = load_category_mapping()
+    df = df[df["Keyword"] != keyword]  # Remove row
     df.to_csv(category_mapping_file, index=False)
+
+# Apply category mappings to transactions
+def apply_category_mappings(df):
+    mapping_df = load_category_mapping()
+    
+    if not df.empty and not mapping_df.empty:
+        for _, row in mapping_df.iterrows():
+            keyword = row["Keyword"].lower()
+            category = row["Category"]
+            df.loc[df['description'].str.contains(keyword, case=False, na=False), 'category'] = category
+    
+    return df
 
 # Load data
 df = load_data()
-
-# Stop execution if CSV is missing
 if df is None:
     st.stop()
 
@@ -77,34 +98,73 @@ months_ordered = ["January", "February", "March", "April", "May", "June", "July"
                   "August", "September", "October", "November", "December"]
 selected_month = st.sidebar.radio("Select a month", months_ordered)
 
+# Apply category mappings to update "Other" transactions
+df = apply_category_mappings(df)
+
 # Filter transactions for selected month
 filtered_df = df[df['month'] == selected_month]
 
 # Tabs
 tab1, tab2, tab3, tab4 = st.tabs(["💸 Spending", "💰 Saving", "📈 Income", "❓ Uncategorized Transactions"])
 
-# UNCATEGORIZED TRANSACTIONS TAB
+### **SPENDING TAB**
+with tab1:
+    st.subheader(f"📊 Spending Analysis - {selected_month}")
+
+    spending_df = filtered_df[filtered_df['action'].str.lower() == 'spend']
+    
+    if not spending_df.empty:
+        category_spending = spending_df.groupby('category')['amount'].sum().sort_values(ascending=False)
+
+        # Two side-by-side charts
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.subheader("💰 Spending per Category")
+            fig, ax = plt.subplots(figsize=(10, 5))
+            category_spending.sort_values(ascending=True).plot(kind="barh", ax=ax, color=plt.cm.Paired.colors, alpha=0.8)
+            ax.set_xlabel("Total Spent ($)")
+            ax.set_ylabel("Category")
+            ax.set_title(f"Total Spending by Category ({selected_month})")
+            plt.grid(axis="x", linestyle="--", alpha=0.5)
+            plt.tight_layout()
+            st.pyplot(fig)
+
+        with col2:
+            st.subheader("📊 Spending Distribution")
+            fig, ax = plt.subplots(figsize=(8, 6))
+            category_spending.plot(kind="pie", ax=ax, autopct='%1.1f%%', startangle=140, colors=plt.cm.Paired.colors, pctdistance=0.85)
+            ax.set_ylabel("")
+            ax.set_title(f"Spending Breakdown by Category ({selected_month})")
+            plt.tight_layout()
+            st.pyplot(fig)
+
+        st.subheader(f"📑 Spending Transactions - {selected_month}")
+        st.dataframe(spending_df)
+
+    else:
+        st.warning(f"⚠️ No spending transactions found for {selected_month}.")
+
+### **UNCATEGORIZED TRANSACTIONS TAB**
 with tab4:
     st.subheader("❓ Uncategorized Transactions")
 
     # Filter transactions marked as "Other"
     uncategorized_df = df[df['category'] == "Other"]
 
-    # Display uncategorized transactions
     if not uncategorized_df.empty:
         st.write("### 🚨 Transactions Without a Category")
         st.dataframe(uncategorized_df)
     else:
         st.success("✅ No uncategorized transactions found!")
 
-    # Load and display category mapping file
+    # Load and display category mapping file (Centered)
     category_mapping_df = load_category_mapping()
-    st.write("### 🔍 Current Category Mappings")
-    st.dataframe(category_mapping_df)
+    st.markdown("<h4 style='text-align: center;'>🔍 Current Category Mappings</h4>", unsafe_allow_html=True)
+    st.dataframe(category_mapping_df.style.set_properties(**{'text-align': 'center'}))
 
     # Form for adding new category mappings
     st.write("### ➕ Add New Category Mapping")
-
     with st.form("add_category_mapping"):
         keyword = st.text_input("Enter Keyword (e.g., 'Uber', 'Starbucks')").strip()
         category = st.text_input("Enter Category (e.g., 'Transport', 'Dining')").strip()
@@ -112,11 +172,18 @@ with tab4:
 
     if submit_button:
         if keyword and category:
-            # Add to DataFrame and save
-            new_row = pd.DataFrame([[keyword, category]], columns=["Keyword", "Category"])
-            category_mapping_df = pd.concat([category_mapping_df, new_row], ignore_index=True)
-            save_category_mapping(category_mapping_df)
-            st.success(f"✅ Mapping added: '{keyword}' → '{category}'")
+            if save_category_mapping(keyword, category):
+                st.success(f"✅ Mapping added: '{keyword}' → '{category}'")
+            else:
+                st.warning("⚠️ This mapping already exists.")
             st.rerun()
         else:
             st.error("❌ Both Keyword and Category are required!")
+
+    # Delete category mappings
+    st.write("### ❌ Delete a Category Mapping")
+    keyword_to_delete = st.selectbox("Select a keyword to delete", category_mapping_df["Keyword"].unique())
+    if st.button("Delete Mapping"):
+        delete_category_mapping(keyword_to_delete)
+        st.success(f"✅ Deleted mapping: '{keyword_to_delete}'")
+        st.rerun()
