@@ -133,7 +133,7 @@ with tab1:
         with col2:
             st.subheader("📊 Spending Distribution")
             fig, ax = plt.subplots(figsize=(8, 6))
-            category_spending.plot(kind="pie", ax=ax, autopct='%1.1f%%', startangle=140, cmap="coolwarm", pctdistance=0.85)
+            category_spending.plot(kind="pie", ax=ax, autopct='%1.1f%%', startangle=140, colors=plt.cm.Paired.colors, pctdistance=0.85)
             ax.set_ylabel("")
             ax.set_title(f"Spending Breakdown by Category ({selected_month})")
             plt.tight_layout()
