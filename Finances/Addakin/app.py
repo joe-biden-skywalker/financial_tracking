@@ -1,5 +1,3 @@
-
-
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -30,89 +28,48 @@ spending_tab, income_tab, savings_tab, other_tab = st.tabs([
     "Spending Overview", "Income Overview", "Savings Overview", "Non-Categorized Transactions"
 ])
 
-# Spending Overview
-with spending_tab:
-    spending_df = filtered_df[filtered_df["Action"] == "Spend"]
-    spending_df = spending_df[spending_df["Category"] != "Other"]
+# 📌 YTD Spending Line Chart (NOT Impacted by Filter)
+st.subheader("📊 Year-to-Date (YTD) Spending Trends (January & February)")
 
-    if spending_df.empty:
-        st.warning("No spending data available for the selected month.")
-    else:
-        st.subheader(f"Spending Breakdown - {selected_month}")
+# Filter dataset to only include January & February spending
+ytd_spending_df = df[(df["Action"] == "Spend") & (df["Month"].isin(["January", "February"]))]
 
-        # Aggregate and sort in descending order
-        category_spending = spending_df.groupby("Category")["Amount"].sum().reset_index()
-        category_spending = category_spending.sort_values(by="Amount", ascending=False)
+if ytd_spending_df.empty:
+    st.warning("No YTD spending data available.")
+else:
+    # Aggregate spending per category per month
+    ytd_spending = ytd_spending_df.groupby(["Month", "Category"])["Amount"].sum().reset_index()
 
-        # Create bar chart for filtered spending
-        fig = px.bar(
-            category_spending,
-            x="Category",
-            y="Amount",
-            title=f"Spending by Category - {selected_month}",
-            text=category_spending["Amount"].apply(lambda x: f"${x:,.2f}")  # Format as dollars
-        )
+    # Sort months correctly
+    ytd_spending["Month"] = pd.Categorical(ytd_spending["Month"], categories=["January", "February"], ordered=True)
 
-        fig.update_traces(
-            marker_color="lightblue",
-            textposition="outside",
-            textfont_size=12
-        )
+    # Create line chart
+    fig_ytd = px.line(
+        ytd_spending,
+        x="Month",
+        y="Amount",
+        color="Category",  # Different lines for each category
+        title="YTD Spending Trends by Category (Jan & Feb)",
+        markers=True,  # Add markers at data points
+    )
 
-        fig.update_layout(
-            xaxis_title="Category",
-            yaxis_title="Total Spending ($)",
-            xaxis_tickangle=-30,
-            title_font_size=16,
-            margin=dict(l=40, r=40, t=40, b=100)  # Prevent labels from getting cut off
-        )
+    fig_ytd.update_traces(
+        text=ytd_spending["Amount"].apply(lambda x: f"${x:,.2f}"),  # Format as dollars
+        textposition="top center"
+    )
 
-        st.plotly_chart(fig, use_container_width=True)
-        st.dataframe(spending_df)
+    fig_ytd.update_layout(
+        xaxis_title="Month",
+        yaxis_title="Total Spending ($)",
+        title_font_size=16,
+        margin=dict(l=40, r=40, t=40, b=100),  # Prevent labels from getting cut off
+        legend_title="Category",
+        xaxis=dict(tickmode="array", tickvals=["January", "February"]),  # Ensure proper month labels
+    )
 
-    # 📌 YTD Spending Chart (NOT Impacted by Filter)
-    st.subheader("📊 Year-to-Date (YTD) Spending Overview (January & February)")
+    st.plotly_chart(fig_ytd, use_container_width=True)
+    st.dataframe(ytd_spending)
     
-    # Filter dataset to only include January & February spending
-    ytd_spending_df = df[(df["Action"] == "Spend") & (df["Month"].isin(["January", "February"]))]
-    
-    if ytd_spending_df.empty:
-        st.warning("No YTD spending data available.")
-    else:
-        # Aggregate and sort in descending order
-        ytd_spending = ytd_spending_df.groupby("Category")["Amount"].sum().reset_index()
-        ytd_spending = ytd_spending.sort_values(by="Amount", ascending=False)
-
-        # Create bar chart for YTD spending
-        fig_ytd = px.bar(
-            ytd_spending,
-            x="Category",
-            y="Amount",
-            title="YTD Spending by Category (Jan & Feb)",
-            text=ytd_spending["Amount"].apply(lambda x: f"${x:,.2f}")  # Format as dollars
-        )
-
-        fig_ytd.update_traces(
-            marker_color="darkblue",
-            textposition="outside",
-            textfont_size=12
-        )
-
-        fig_ytd.update_layout(
-            xaxis_title="Category",
-            yaxis_title="Total Spending ($)",
-            xaxis_tickangle=-30,
-            title_font_size=16,
-            margin=dict(l=40, r=40, t=40, b=100)  # Prevent labels from getting cut off
-        )
-
-        st.plotly_chart(fig_ytd, use_container_width=True)
-        st.dataframe(ytd_spending)
-
-
-
-
-
 # Income Overview
 with income_tab:
     income_df = filtered_df[filtered_df["Action"] == "Income"]
