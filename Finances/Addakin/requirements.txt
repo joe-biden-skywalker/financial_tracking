@@ -1,5 +1,3 @@
 streamlit
 pandas
 matplotlib
-Github
-aiohttp>=3.9.0
