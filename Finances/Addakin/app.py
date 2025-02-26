@@ -36,7 +36,7 @@ tab1, tab2, tab3, tab4 = st.tabs(["Spending Overview", "Income Overview", "Savin
 ### 🚀 SPENDING OVERVIEW
 with tab1:
     st.header("💸 Spending Overview")
-    spending_df = df_filtered[df_filtered["Category"] == "Spending"]
+    spending_df = df_filtered[df_filtered["Category"] == "Spend"]
 
     if not spending_df.empty:
         st.dataframe(spending_df)
