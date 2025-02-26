@@ -6,7 +6,7 @@ import plotly.express as px
 @st.cache_data
 def load_data():
     finances = pd.read_csv("Finances/Addakin/streamlit/finances.csv")
-    spending_categories = pd.read_csv("spending_categories.csv")
+    spending_categories = pd.read_csv("Finances/Addakin/spending_categories.csv")
     
     # Exclude "CC Payments" and "Venmo"
     finances = finances[~finances['Category'].isin(["CC Payments", "Venmo"])]
