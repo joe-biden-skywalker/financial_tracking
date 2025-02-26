@@ -2,6 +2,9 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
+# ✅ Move this to the top
+st.set_page_config(page_title="Personal Finance Dashboard", layout="wide")
+
 # Load Data
 @st.cache_data
 def load_data():
@@ -25,8 +28,6 @@ selected_month = st.sidebar.selectbox(
 # Apply month filter
 df_filtered = df[df["Month"] == selected_month]
 
-# Set page layout
-st.set_page_config(page_title="Personal Finance Dashboard", layout="wide")
 st.title("💰 Personal Finance Dashboard")
 
 # Set up tabs
