@@ -124,6 +124,10 @@ else:
 
     st.plotly_chart(fig_ytd, use_container_width=True)  # Removed st.dataframe(ytd_spending)
 
+    # 📌 Interactive Transactions Table at the Bottom
+    st.subheader("📜 Explore All Transactions")
+    st.dataframe(df, use_container_width=True)
+
     
 # Income Overview
 with income_tab:
