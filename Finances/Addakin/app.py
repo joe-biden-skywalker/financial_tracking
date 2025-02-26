@@ -83,6 +83,19 @@ with spending_tab:
             )
             st.plotly_chart(fig_pie, use_container_width=True)
 
+# 📌 Top 5 Transactions Per Category
+st.subheader("🏆 Top 5 Transactions Per Category")
+
+# Select category
+categories = df["Category"].unique().tolist()
+selected_category = st.selectbox("Select a Category:", categories)
+
+# Filter data for the selected category
+top_transactions = df[df["Category"] == selected_category].nlargest(5, "Amount")
+
+# Display the table
+st.dataframe(top_transactions, use_container_width=True)
+
 # 📌 YTD Spending Line Chart (NOT Impacted by Filter)
 st.subheader("📊 Year-to-Date (YTD) Spending Trends (January & February)")
 
