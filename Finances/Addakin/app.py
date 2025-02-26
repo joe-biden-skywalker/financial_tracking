@@ -31,6 +31,7 @@ spending_tab, income_tab, savings_tab, other_tab = st.tabs([
 ])
 
 # Spending Overview
+# Spending Overview
 with spending_tab:
     spending_df = filtered_df[filtered_df["Action"] == "Spend"]
     spending_df = spending_df[spending_df["Category"] != "Other"]
@@ -44,29 +45,31 @@ with spending_tab:
         category_spending = spending_df.groupby("Category")["Amount"].sum().reset_index()
         category_spending = category_spending.sort_values(by="Amount", ascending=False)  # Sort greatest to least
 
-        # Create bar chart with improved labels
+        # Create bar chart with dollar sign labels
         fig = px.bar(
             category_spending, 
             x="Category", 
             y="Amount", 
             title="Spending by Category",
-            text_auto=".2s"  # Adds formatted labels on bars
+            text=category_spending["Amount"].apply(lambda x: f"${x:,.2f}")  # Format labels as dollars
         )
         
         fig.update_traces(
             marker_color="steelblue",  # Consistent color
+            textposition="outside",  # Move labels above bars
             textfont_size=12
         )
 
         fig.update_layout(
             xaxis_title="Category",
-            yaxis_title="Total Amount",
+            yaxis_title="Total Amount ($)",
             xaxis_tickangle=-30,  # Rotate labels for readability
             title_font_size=16
         )
 
         st.plotly_chart(fig)
         st.dataframe(spending_df)
+
 
 
 # Income Overview
