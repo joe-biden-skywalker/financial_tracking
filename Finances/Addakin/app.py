@@ -6,15 +6,6 @@ import plotly.express as px
 @st.cache_data
 def load_data():
     df = pd.read_csv("Finances/Addakin/streamlit/finances.csv")
-    
-    # Ensure Date column is present and converted
-    if "Date" in df.columns:
-        df["Date"] = pd.to_datetime(df["Date"])
-    else:
-        raise KeyError("No 'Date' column found in the CSV file.")
-    
-    # Extract Month as a separate column
-    df["Month"] = df["Date"].dt.strftime("%B")
 
     # Exclude unwanted categories
     df = df[~df["Category"].isin(["CC Payment", "Venmo"])]
@@ -24,7 +15,7 @@ def load_data():
 # Load data
 df = load_data()
 
-# Sidebar: Month filter
+# Sidebar: Month filter (December, January, February)
 selected_month = st.sidebar.selectbox(
     "Filter by Month",
     options=["December", "January", "February"],
@@ -46,13 +37,11 @@ with tab1:
     st.header("💸 Spending Overview")
     spending_df = df_filtered[df_filtered["Category"] == "Spending"]
 
-    # Spending Summary
     if not spending_df.empty:
         st.dataframe(spending_df)
 
-        # Spending Trends Over Time
-        spending_trends = spending_df.groupby(spending_df["Date"].dt.strftime("%b %d"))["Amount"].sum().reset_index()
-        fig = px.line(spending_trends, x="Date", y="Amount", title="Spending Trends Over Time", markers=True)
+        # Spending Summary by Category
+        fig = px.bar(spending_df, x="Category", y="Amount", title="Spending Breakdown", color="Category")
         st.plotly_chart(fig)
     else:
         st.warning("No spending data available for the selected month.")
@@ -62,13 +51,11 @@ with tab2:
     st.header("💰 Income Overview")
     income_df = df_filtered[df_filtered["Category"] == "Income"]
 
-    # Income Summary
     if not income_df.empty:
         st.dataframe(income_df)
 
-        # Income Trends
-        income_trends = income_df.groupby(income_df["Date"].dt.strftime("%b %d"))["Amount"].sum().reset_index()
-        fig = px.line(income_trends, x="Date", y="Amount", title="Income Trends Over Time", markers=True)
+        # Income Summary
+        fig = px.pie(income_df, names="Category", values="Amount", title="Income Distribution")
         st.plotly_chart(fig)
     else:
         st.warning("No income data available for the selected month.")
@@ -78,13 +65,11 @@ with tab3:
     st.header("💾 Savings Overview")
     savings_df = df_filtered[df_filtered["Category"] == "Savings"]
 
-    # Savings Summary
     if not savings_df.empty:
         st.dataframe(savings_df)
 
-        # Savings Trends
-        savings_trends = savings_df.groupby(savings_df["Date"].dt.strftime("%b %d"))["Amount"].sum().reset_index()
-        fig = px.line(savings_trends, x="Date", y="Amount", title="Savings Trends Over Time", markers=True)
+        # Savings Breakdown
+        fig = px.line(savings_df, x="Month", y="Amount", title="Savings Trend", markers=True)
         st.plotly_chart(fig)
     else:
         st.warning("No savings data available for the selected month.")
