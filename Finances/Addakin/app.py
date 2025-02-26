@@ -45,7 +45,7 @@ with tabs[2]:
 # Non-Categorized Transactions Tab
 with tabs[3]:
     st.header("Non-Categorized Transactions")
-    other_df = pd.read_csv("transactions.csv")  # Load original data again
+    other_df = pd.read_csv("Finances/Addakin/streamlit/finances.csv")  # Load original data again
     other_df = other_df[other_df["Category"] == "Other"]  # Only "Other" category
     other_df = other_df[other_df["Month"] == selected_month]  # Apply month filter
     st.dataframe(other_df)
