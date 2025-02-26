@@ -5,7 +5,7 @@ import plotly.express as px
 # Load data (Assuming data is in a CSV file named 'transactions.csv')
 @st.cache_data
 def load_data():
-    df = pd.read_csv("transactions.csv")  # Adjust filename if needed
+    df = pd.read_csv("Finances/Addakin/streamlit/finances.csv")  # Adjust filename if needed
     df["Date"] = pd.to_datetime(df["Date"])  # Convert to datetime
     df = df[df["Category"].isin(["CC Payment", "Venmo", "Other"]) == False]  # Exclude specified categories
     return df
