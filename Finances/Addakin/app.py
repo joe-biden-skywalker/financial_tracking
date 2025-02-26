@@ -39,10 +39,35 @@ with spending_tab:
         st.warning("No spending data available for the selected month.")
     else:
         st.subheader(f"Spending Breakdown - {selected_month}")
+        
+        # Aggregate spending by category and sort in descending order
         category_spending = spending_df.groupby("Category")["Amount"].sum().reset_index()
-        fig = px.bar(category_spending, x="Category", y="Amount", title="Spending by Category")
+        category_spending = category_spending.sort_values(by="Amount", ascending=False)  # Sort greatest to least
+
+        # Create bar chart with improved labels
+        fig = px.bar(
+            category_spending, 
+            x="Category", 
+            y="Amount", 
+            title="Spending by Category",
+            text_auto=".2s"  # Adds formatted labels on bars
+        )
+        
+        fig.update_traces(
+            marker_color="steelblue",  # Consistent color
+            textfont_size=12
+        )
+
+        fig.update_layout(
+            xaxis_title="Category",
+            yaxis_title="Total Amount",
+            xaxis_tickangle=-30,  # Rotate labels for readability
+            title_font_size=16
+        )
+
         st.plotly_chart(fig)
         st.dataframe(spending_df)
+
 
 # Income Overview
 with income_tab:
