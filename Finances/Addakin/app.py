@@ -86,9 +86,9 @@ with spending_tab:
 # 📌 Top 5 Transactions Per Category
 st.subheader("🏆 Top 5 Transactions Per Category")
 
-# Select category
+# Create a horizontal selection for categories
 categories = df["Category"].unique().tolist()
-selected_category = st.selectbox("Select a Category:", categories)
+selected_category = st.radio("Select a Category:", categories, horizontal=True)
 
 # Filter data for the selected category
 top_transactions = df[df["Category"] == selected_category].nlargest(5, "Amount")
