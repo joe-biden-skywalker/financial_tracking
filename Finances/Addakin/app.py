@@ -27,6 +27,45 @@ filtered_df = df[df["Month"] == selected_month]
 spending_tab, income_tab, savings_tab, other_tab = st.tabs([
     "Spending Overview", "Income Overview", "Savings Overview", "Non-Categorized Transactions"
 ])
+# Spending Overview
+with spending_tab:
+    spending_df = filtered_df[filtered_df["Action"] == "Spend"]
+    spending_df = spending_df[spending_df["Category"] != "Other"]
+
+    if spending_df.empty:
+        st.warning("No spending data available for the selected month.")
+    else:
+        st.subheader(f"Spending Breakdown - {selected_month}")
+
+        # Aggregate and sort in descending order
+        category_spending = spending_df.groupby("Category")["Amount"].sum().reset_index()
+        category_spending = category_spending.sort_values(by="Amount", ascending=False)
+
+        # Create bar chart for filtered spending
+        fig = px.bar(
+            category_spending,
+            x="Category",
+            y="Amount",
+            title=f"Spending by Category - {selected_month}",
+            text=category_spending["Amount"].apply(lambda x: f"${x:,.2f}")  # Format as dollars
+        )
+
+        fig.update_traces(
+            marker_color="lightblue",
+            textposition="outside",
+            textfont_size=12
+        )
+
+        fig.update_layout(
+            xaxis_title="Category",
+            yaxis_title="Total Spending ($)",
+            xaxis_tickangle=-30,
+            title_font_size=16,
+            margin=dict(l=40, r=40, t=40, b=100)  # Prevent labels from getting cut off
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+        st.dataframe(spending_df)
 
 # 📌 YTD Spending Line Chart (NOT Impacted by Filter)
 st.subheader("📊 Year-to-Date (YTD) Spending Trends (January & February)")
