@@ -11,7 +11,7 @@ def load_data():
     df = pd.read_csv("Finances/Addakin/streamlit/finances.csv")
 
     # Exclude unwanted categories
-    #df = df[~df["Category"].isin(["CC Payment", "Venmo"])]
+    df = df[~df["Category"].isin(["CC Payment", "Venmo"])]
 
     return df
 
