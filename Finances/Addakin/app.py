@@ -106,8 +106,8 @@ else:
         xaxis=dict(tickmode="array", tickvals=["January", "February"]),  # Ensure proper month labels
     )
 
-    st.plotly_chart(fig_ytd, use_container_width=True)
-    st.dataframe(ytd_spending)
+    st.plotly_chart(fig_ytd, use_container_width=True)  # Removed st.dataframe(ytd_spending)
+
     
 # Income Overview
 with income_tab:
