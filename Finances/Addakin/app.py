@@ -35,37 +35,53 @@ with spending_tab:
     if spending_df.empty:
         st.warning("No spending data available for the selected month.")
     else:
-        st.subheader(f"Spending Breakdown - {selected_month}")
+        st.subheader(f"💸 Spending Breakdown - {selected_month}")
 
-        # Aggregate and sort in descending order
+        # 📌 Aggregate spending by category
         category_spending = spending_df.groupby("Category")["Amount"].sum().reset_index()
-        category_spending = category_spending.sort_values(by="Amount", ascending=False)
+        category_spending = category_spending.sort_values(by="Amount", ascending=False)  # Sort descending
 
-        # Create bar chart for filtered spending
-        fig = px.bar(
-            category_spending,
-            x="Category",
-            y="Amount",
-            title=f"Spending by Category - {selected_month}",
-            text=category_spending["Amount"].apply(lambda x: f"${x:,.2f}")  # Format as dollars
-        )
+        # 📊 Layout: Bar Chart & Pie Chart side by side
+        col1, col2 = st.columns(2)
 
-        fig.update_traces(
-            marker_color="lightblue",
-            textposition="outside",
-            textfont_size=12
-        )
+        # 📊 Bar Chart: Spending by Category
+        with col1:
+            fig_bar = px.bar(
+                category_spending,
+                x="Category",
+                y="Amount",
+                title="Spending by Category",
+                text=category_spending["Amount"].apply(lambda x: f"${x:,.2f}"),
+            )
+            fig_bar.update_traces(textposition="outside")
+            fig_bar.update_layout(
+                xaxis_title="Category",
+                yaxis_title="Total Amount ($)",
+                title_font_size=16,
+                margin=dict(l=40, r=40, t=40, b=100),
+                xaxis=dict(categoryorder="total descending"),  # Ensure sorting from highest to lowest
+            )
+            st.plotly_chart(fig_bar, use_container_width=True)
 
-        fig.update_layout(
-            xaxis_title="Category",
-            yaxis_title="Total Spending ($)",
-            xaxis_tickangle=-30,
-            title_font_size=16,
-            margin=dict(l=40, r=40, t=40, b=100)  # Prevent labels from getting cut off
-        )
-
-        st.plotly_chart(fig, use_container_width=True)
-        st.dataframe(spending_df)
+        # 🥧 Pie Chart: Monthly Spending Breakdown
+        with col2:
+            fig_pie = px.pie(
+                category_spending,
+                names="Category",
+                values="Amount",
+                title="Monthly Spending Breakdown",
+                hole=0.4,  # Donut-style
+            )
+            fig_pie.update_traces(
+                textinfo="percent+label",
+                hoverinfo="label+percent+value",
+            )
+            fig_pie.update_layout(
+                title_font_size=16,
+                margin=dict(l=40, r=40, t=40, b=100),
+                showlegend=True,
+            )
+            st.plotly_chart(fig_pie, use_container_width=True)
 
 # 📌 YTD Spending Line Chart (NOT Impacted by Filter)
 st.subheader("📊 Year-to-Date (YTD) Spending Trends (January & February)")
