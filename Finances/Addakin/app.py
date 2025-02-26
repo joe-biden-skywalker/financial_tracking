@@ -1,193 +1,163 @@
+
+
 import streamlit as st
 import pandas as pd
-import os
-import matplotlib.pyplot as plt
+import plotly.express as px
 
-# Authentication Details
-CORRECT_USERNAME = "addakin"
-CORRECT_PASSWORD = "3Clacrosse#1"
-
-# Initialize session state for login
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
-
-# Login Page
-def login():
-    st.title("🔐 Login to Access Dashboard")
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
-    login_button = st.button("Login", key="login_button_unique")
-
-    if login_button:
-        if username == CORRECT_USERNAME and password == CORRECT_PASSWORD:
-            st.session_state.authenticated = True
-            st.rerun()
-        else:
-            st.error("❌ Incorrect username or password. Try again.")
-
-# If not authenticated, show login page
-if not st.session_state.authenticated:
-    login()
-    st.stop()
-
-# File paths
-csv_file = "Finances/Addakin/streamlit/finances.csv"
-category_mapping_file = "Finances/Addakin/spending_categories.csv"
-
-# Load CSV data safely
+# Load Data
+@st.cache_data
 def load_data():
-    try:
-        df = pd.read_csv(csv_file)
-        df.columns = df.columns.str.lower().str.strip()
-        return df
-    except FileNotFoundError:
-        st.error(f"❌ CSV file not found at: {csv_file}")
-        return None
-
-# Load category mapping and ensure correct headers
-def load_category_mapping():
-    try:
-        df = pd.read_csv(category_mapping_file)
-        if df.empty or "Keyword" not in df.columns or "Category" not in df.columns:
-            df = pd.DataFrame(columns=["Keyword", "Category"])
-            df.to_csv(category_mapping_file, index=False)
-        return df
-    except FileNotFoundError:
-        df = pd.DataFrame(columns=["Keyword", "Category"])
-        df.to_csv(category_mapping_file, index=False)
-        return df
-
-# Save new category mapping
-def save_category_mapping(keyword, category):
-    df = load_category_mapping()
-    if not df.empty and ((df['Keyword'] == keyword) & (df['Category'] == category)).any():
-        return False  # Mapping already exists
-    
-    new_mapping = pd.DataFrame([[keyword, category]], columns=["Keyword", "Category"])
-    new_mapping.to_csv(category_mapping_file, mode='a', header=False, index=False)
-    return True
-
-# Delete category mapping
-def delete_category_mapping(keyword):
-    df = load_category_mapping()
-    df = df[df["Keyword"] != keyword]  # Remove row
-    df.to_csv(category_mapping_file, index=False)
-
-# Apply category mappings to transactions
-def apply_category_mappings(df):
-    mapping_df = load_category_mapping()
-    if not df.empty and not mapping_df.empty:
-        for _, row in mapping_df.iterrows():
-            keyword = row["Keyword"].lower()
-            category = row["Category"]
-            df.loc[df['description'].str.contains(keyword, case=False, na=False), 'category'] = category
+    df = pd.read_csv("Finances/Addakin/streamlit/finances.csv")
+    df = df.dropna(subset=["Category"])  # Drop rows where Category is missing
+    df = df[~df["Category"].isin(["CC Payment", "Venmo"])]  # Exclude CC Payments & Venmo
     return df
 
-# Load data
 df = load_data()
-if df is None:
-    st.stop()
 
-# Standardize 'month' column
-df['month'] = df['month'].str.capitalize()
+# Set up Streamlit Layout
+st.set_page_config(page_title="Personal Finance Dashboard", layout="wide")
+st.title("💰 Personal Finance Dashboard")
 
-# Sidebar Logout Button
-if st.sidebar.button("🚪 Logout", key="logout_button_unique"):
-    st.session_state.authenticated = False
-    st.rerun()
+# Sidebar: Filter by Month
+months = ["December", "January", "February"]
+selected_month = st.sidebar.selectbox("Select Month:", months, index=months.index("February"))
 
-# Sidebar Filters
-st.sidebar.header("📅 Filter by Month")
-months_ordered = ["January", "February", "March", "April", "May", "June", "July", 
-                  "August", "September", "October", "November", "December"]
-selected_month = st.sidebar.radio("Select a month", months_ordered)
+# Filter Data by Month
+filtered_df = df[df["Month"] == selected_month]
 
-# Apply category mappings to update "Other" transactions
-df = apply_category_mappings(df)
+# Create Tabs
+spending_tab, income_tab, savings_tab, other_tab = st.tabs([
+    "Spending Overview", "Income Overview", "Savings Overview", "Non-Categorized Transactions"
+])
 
-# Filter transactions for selected month
-filtered_df = df[df['month'] == selected_month]
+# Spending Overview
+with spending_tab:
+    spending_df = filtered_df[filtered_df["Action"] == "Spend"]
+    spending_df = spending_df[spending_df["Category"] != "Other"]
 
-# Tabs
-tab1, tab2, tab3, tab4 = st.tabs(["💸 Spending", "💰 Saving", "📈 Income", "❓ Uncategorized Transactions"])
+    if spending_df.empty:
+        st.warning("No spending data available for the selected month.")
+    else:
+        st.subheader(f"Spending Breakdown - {selected_month}")
 
-### **SPENDING TAB**
-with tab1:
-    st.subheader(f"📊 Spending Analysis - {selected_month}")
+        # Aggregate and sort in descending order
+        category_spending = spending_df.groupby("Category")["Amount"].sum().reset_index()
+        category_spending = category_spending.sort_values(by="Amount", ascending=False)
 
-    spending_df = filtered_df[filtered_df['action'].str.lower() == 'spend']
-    
-    if not spending_df.empty:
-        category_spending = spending_df.groupby('category')['amount'].sum().sort_values(ascending=False)
+        # Create bar chart
+        fig = px.bar(
+            category_spending,
+            x="Category",
+            y="Amount",
+            title="Spending by Category",
+            text=category_spending["Amount"].apply(lambda x: f"${x:,.2f}")  # Format as dollars
+        )
 
-        # Two side-by-side charts
-        col1, col2 = st.columns(2)
+        fig.update_traces(
+            marker_color="lightblue",
+            textposition="outside",
+            textfont_size=12
+        )
 
-        with col1:
-            st.subheader("💰 Spending per Category")
-            fig, ax = plt.subplots(figsize=(10, 5))
-            category_spending.sort_values(ascending=True).plot(kind="barh", ax=ax, color=plt.cm.Paired.colors, alpha=0.8)
-            ax.set_xlabel("Total Spent ($)")
-            ax.set_ylabel("Category")
-            ax.set_title(f"Total Spending by Category ({selected_month})")
-            plt.grid(axis="x", linestyle="--", alpha=0.5)
-            plt.tight_layout()
-            st.pyplot(fig)
+        fig.update_layout(
+            xaxis_title="Category",
+            yaxis_title="Total Spending ($)",
+            xaxis_tickangle=-30,
+            title_font_size=16,
+            margin=dict(l=40, r=40, t=40, b=100)  # Prevent labels from getting cut off
+        )
 
-        with col2:
-            st.subheader("📊 Spending Distribution")
-            fig, ax = plt.subplots(figsize=(8, 6))
-            category_spending.plot(kind="pie", ax=ax, autopct='%1.1f%%', startangle=140, colors=plt.cm.Paired.colors, pctdistance=0.85)
-            ax.set_ylabel("")
-            ax.set_title(f"Spending Breakdown by Category ({selected_month})")
-            plt.tight_layout()
-            st.pyplot(fig)
-
-        st.subheader(f"📑 Spending Transactions - {selected_month}")
+        st.plotly_chart(fig, use_container_width=True)
         st.dataframe(spending_df)
 
+
+
+
+# Income Overview
+with income_tab:
+    income_df = filtered_df[filtered_df["Action"] == "Income"]
+
+    if income_df.empty:
+        st.warning("No income data available for the selected month.")
     else:
-        st.warning(f"⚠️ No spending transactions found for {selected_month}.")
+        st.subheader(f"Income Breakdown - {selected_month}")
 
-### **UNCATEGORIZED TRANSACTIONS TAB**
-with tab4:
-    st.subheader("❓ Uncategorized Transactions")
+        # Aggregate income, make values absolute, and sort from highest to lowest
+        income_sources = income_df.groupby("Description")["Amount"].sum().reset_index()
+        income_sources["Amount"] = income_sources["Amount"].abs()
+        income_sources = income_sources.sort_values(by="Amount", ascending=False)
 
-    # Filter transactions marked as "Other"
-    uncategorized_df = df[df['category'] == "Other"]
+        # Create bar chart
+        fig = px.bar(
+            income_sources, 
+            x="Description", 
+            y="Amount", 
+            title="Income Sources",
+            text=income_sources["Amount"].apply(lambda x: f"${x:,.2f}")  # Format labels as dollars
+        )
 
-    if not uncategorized_df.empty:
-        st.write("### 🚨 Transactions Without a Category")  # 🔥 Fixed Line 🔥
-        st.dataframe(uncategorized_df)
+        fig.update_traces(
+            marker_color="green",
+            textposition="outside",
+            textfont_size=12
+        )
+
+        fig.update_layout(
+            xaxis_title="Source",
+            yaxis_title="Total Income ($)",
+            xaxis_tickangle=-30,
+            title_font_size=16,
+            margin=dict(l=40, r=40, t=40, b=100)  # Prevent cut-off
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+        st.dataframe(income_sources)
+
+
+
+# Savings Overview
+with savings_tab:
+    savings_df = filtered_df[filtered_df["Action"] == "Savings"]
+
+    if savings_df.empty:
+        st.warning("No savings data available for the selected month.")
     else:
-        st.success("✅ No uncategorized transactions found!")
+        st.subheader(f"Savings Overview - {selected_month}")
 
-    # Load and display category mapping file (Centered)
-    category_mapping_df = load_category_mapping()
-    st.markdown("<h4 style='text-align: center;'>🔍 Current Category Mappings</h4>", unsafe_allow_html=True)
-    st.dataframe(category_mapping_df)
+        # Aggregate savings trend
+        savings_trend = savings_df.groupby("Day")["Amount"].sum().reset_index()
 
-    # Form for adding new category mappings
-    st.write("### ➕ Add New Category Mapping")
-    with st.form("add_category_mapping"):
-        keyword = st.text_input("Enter Keyword (e.g., 'Uber', 'Starbucks')").strip()
-        category = st.text_input("Enter Category (e.g., 'Transport', 'Dining')").strip()
-        submit_button = st.form_submit_button("Add Mapping")
+        # Create line chart
+        fig = px.line(
+            savings_trend, 
+            x="Day", 
+            y="Amount", 
+            title="Savings Over Time",
+            markers=True  # Add data points
+        )
 
-    if submit_button:
-        if keyword and category:
-            if save_category_mapping(keyword, category):
-                st.success(f"✅ Mapping added: '{keyword}' → '{category}'")
-            else:
-                st.warning("⚠️ This mapping already exists.")
-            st.rerun()
-        else:
-            st.error("❌ Both Keyword and Category are required!")
+        fig.update_traces(
+            line=dict(width=3),
+            marker=dict(size=8)
+        )
 
-    # Delete category mappings
-    st.write("### ❌ Delete a Category Mapping")
-    keyword_to_delete = st.selectbox("Select a keyword to delete", category_mapping_df["Keyword"].unique(), key="delete_select")
-    if st.button("Delete Mapping", key="delete_button"):
-        delete_category_mapping(keyword_to_delete)
-        st.success(f"✅ Deleted mapping: '{keyword_to_delete}'")
-        st.rerun()
+        fig.update_layout(
+            xaxis_title="Day",
+            yaxis_title="Total Savings ($)",
+            title_font_size=16,
+            margin=dict(l=40, r=40, t=40, b=40)  # Prevent cut-off
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+        st.dataframe(savings_df)
+
+
+# Non-Categorized Transactions
+with other_tab:
+    other_df = filtered_df[filtered_df["Category"] == "Other"]
+    
+    if other_df.empty:
+        st.warning("No non-categorized transactions available for the selected month.")
+    else:
+        st.subheader(f"Non-Categorized Transactions - {selected_month}")
+        st.dataframe(other_df)
