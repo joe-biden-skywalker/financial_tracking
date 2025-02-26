@@ -5,7 +5,7 @@ import plotly.express as px
 # Load Data
 @st.cache_data
 def load_data():
-    df = pd.read_csv("finances.csv")
+    df = pd.read_csv("Finances/data/finances.csv")
     df = df.dropna(subset=["Category"])  # Drop rows where Category is missing
     df = df[~df["Category"].isin(["CC Payment", "Venmo"])]  # Exclude CC Payments & Venmo
     return df
