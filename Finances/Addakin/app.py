@@ -31,7 +31,6 @@ spending_tab, income_tab, savings_tab, other_tab = st.tabs([
 ])
 
 # Spending Overview
-# Spending Overview
 with spending_tab:
     spending_df = filtered_df[filtered_df["Action"] == "Spend"]
     spending_df = spending_df[spending_df["Category"] != "Other"]
@@ -80,10 +79,37 @@ with income_tab:
         st.warning("No income data available for the selected month.")
     else:
         st.subheader(f"Income Breakdown - {selected_month}")
+
+        # Aggregate income by source, take absolute values, and sort in descending order
         income_sources = income_df.groupby("Description")["Amount"].sum().reset_index()
-        fig = px.bar(income_sources, x="Description", y="Amount", title="Income Sources")
+        income_sources["Amount"] = income_sources["Amount"].abs()  # Convert all amounts to positive
+        income_sources = income_sources.sort_values(by="Amount", ascending=False)  # Sort highest to lowest
+
+        # Create bar chart with dollar sign labels
+        fig = px.bar(
+            income_sources, 
+            x="Description", 
+            y="Amount", 
+            title="Income Sources",
+            text=income_sources["Amount"].apply(lambda x: f"${x:,.2f}")  # Format labels as dollars
+        )
+
+        fig.update_traces(
+            marker_color="green",  # Differentiate income with color
+            textposition="outside",  # Move labels above bars
+            textfont_size=12
+        )
+
+        fig.update_layout(
+            xaxis_title="Source",
+            yaxis_title="Total Income ($)",
+            xaxis_tickangle=-30,  # Rotate labels for readability
+            title_font_size=16
+        )
+
         st.plotly_chart(fig)
-        st.dataframe(income_df)
+        st.dataframe(income_sources)  # Show updated DataFrame with positive values
+
 
 # Savings Overview
 with savings_tab:
