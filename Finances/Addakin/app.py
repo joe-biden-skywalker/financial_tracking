@@ -1,55 +1,83 @@
 import streamlit as st
 import pandas as pd
-import os
-import io
-from github import Github, InputFileContent
+import plotly.express as px
 
-# GitHub Authentication (Store this securely in Streamlit secrets)
-GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
-REPO_NAME = "your-github-user/your-repo"
-
-# Authenticate with PyGithub
-g = Github(GITHUB_TOKEN)
-repo = g.get_repo(REPO_NAME)
-
-# Create a session state for tracking file changes
-if "edited_df" not in st.session_state:
-    st.session_state.edited_df = None
-
-# File uploader
-uploaded_file = st.file_uploader("Upload your financial file (.csv, .xlsx)", type=["csv", "xlsx"])
-
-if uploaded_file:
-    # Read file into Pandas
-    file_ext = uploaded_file.name.split(".")[-1]
+# Load data
+@st.cache_data
+def load_data():
+    finances = pd.read_csv("finances.csv")
+    spending_categories = pd.read_csv("spending_categories.csv")
     
-    if file_ext == "csv":
-        df = pd.read_csv(uploaded_file)
-    else:
-        df = pd.read_excel(uploaded_file)
+    # Exclude "CC Payments" and "Venmo"
+    finances = finances[~finances['Category'].isin(["CC Payments", "Venmo"])]
+    
+    return finances, spending_categories
 
-    # Display editable table
-    st.session_state.edited_df = st.data_editor(df)
+finances, spending_categories = load_data()
 
-    # Save the updated file locally
-    if st.button("Save Changes Locally"):
-        save_path = os.path.join("uploads", uploaded_file.name)
-        os.makedirs("uploads", exist_ok=True)
-        st.session_state.edited_df.to_csv(save_path, index=False)
-        st.success(f"File saved locally: {save_path}")
+# Page layout
+st.set_page_config(page_title="Personal Finance Dashboard", layout="wide")
+st.title("💰 Personal Finance Dashboard")
 
-    # Save & Push to GitHub
-    if st.button("Save & Push to GitHub"):
-        file_path = f"financial_data/{uploaded_file.name}"  # Path in GitHub repo
-        new_content = st.session_state.edited_df.to_csv(index=False)
+# Create tabs
+tabs = ["Spending Overview", "Income Overview", "Savings Overview", "Non-Categorized Transactions"]
+selected_tab = st.sidebar.radio("Select a Tab", tabs)
 
-        try:
-            # Check if file exists in repo
-            contents = repo.get_contents(file_path)
-            repo.update_file(
-                file_path, "Updated financial data", InputFileContent(new_content), contents.sha
-            )
-            st.success("File successfully updated in GitHub!")
-        except Exception:
-            repo.create_file(file_path, "Initial upload of financial file", InputFileContent(new_content))
-            st.success("File successfully uploaded to GitHub!")
+# Spending Overview Tab
+if selected_tab == "Spending Overview":
+    st.header("📊 Spending Overview")
+    
+    # Filter spending transactions
+    spending_df = finances[finances['Action'] == "Spend"]
+    
+    # Spending summary table
+    st.dataframe(spending_df)
+    
+    # Spending breakdown by category
+    category_spending = spending_df.groupby("Category")["Amount"].sum().reset_index()
+    fig = px.pie(category_spending, names='Category', values='Amount', title='Spending by Category')
+    st.plotly_chart(fig)
+    
+    # Spending trends over time
+    spending_trends = spending_df.groupby("Month & Day")["Amount"].sum().reset_index()
+    fig2 = px.line(spending_trends, x='Month & Day', y='Amount', title='Spending Trends Over Time')
+    st.plotly_chart(fig2)
+
+# Income Overview Tab
+elif selected_tab == "Income Overview":
+    st.header("📈 Income Overview")
+    
+    # Filter income transactions
+    income_df = finances[finances['Action'] == "Income"]
+    
+    # Income summary table
+    st.dataframe(income_df)
+    
+    # Income breakdown
+    income_summary = income_df.groupby("Category")["Amount"].sum().reset_index()
+    fig = px.bar(income_summary, x='Category', y='Amount', title='Income by Category')
+    st.plotly_chart(fig)
+
+# Savings Overview Tab
+elif selected_tab == "Savings Overview":
+    st.header("💾 Savings Overview")
+    
+    # Filter savings transactions (assuming savings have specific categories)
+    savings_categories = ["Savings", "Investment", "Retirement"]
+    savings_df = finances[finances['Category'].isin(savings_categories)]
+    
+    st.dataframe(savings_df)
+    
+    # Savings trends
+    savings_trends = savings_df.groupby("Month & Day")["Amount"].sum().reset_index()
+    fig = px.line(savings_trends, x='Month & Day', y='Amount', title='Savings Trends Over Time')
+    st.plotly_chart(fig)
+
+# Non-Categorized Transactions Tab
+elif selected_tab == "Non-Categorized Transactions":
+    st.header("🛠 Non-Categorized Transactions")
+    
+    # Filter non-categorized transactions
+    uncategorized_df = finances[finances['Category'].isna() | (finances['Category'] == "")]
+    
+    st.dataframe(uncategorized_df)
