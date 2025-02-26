@@ -34,58 +34,60 @@ spending_tab, income_tab, savings_tab, other_tab = st.tabs([
 with spending_tab:
     spending_df = filtered_df[filtered_df["Action"] == "Spend"]
     spending_df = spending_df[spending_df["Category"] != "Other"]
-    
+
     if spending_df.empty:
         st.warning("No spending data available for the selected month.")
     else:
         st.subheader(f"Spending Breakdown - {selected_month}")
-        
-        # Aggregate spending by category and sort in descending order
-        category_spending = spending_df.groupby("Category")["Amount"].sum().reset_index()
-        category_spending = category_spending.sort_values(by="Amount", ascending=False)  # Sort greatest to least
 
-        # Create bar chart with dollar sign labels
+        # Aggregate and sort in descending order
+        category_spending = spending_df.groupby("Category")["Amount"].sum().reset_index()
+        category_spending = category_spending.sort_values(by="Amount", ascending=False)
+
+        # Create bar chart
         fig = px.bar(
-            category_spending, 
-            x="Category", 
-            y="Amount", 
+            category_spending,
+            x="Category",
+            y="Amount",
             title="Spending by Category",
-            text=category_spending["Amount"].apply(lambda x: f"${x:,.2f}")  # Format labels as dollars
+            text=category_spending["Amount"].apply(lambda x: f"${x:,.2f}")  # Format as dollars
         )
-        
+
         fig.update_traces(
-            marker_color="steelblue",  # Consistent color
-            textposition="outside",  # Move labels above bars
+            marker_color="lightblue",
+            textposition="outside",
             textfont_size=12
         )
 
         fig.update_layout(
             xaxis_title="Category",
-            yaxis_title="Total Amount ($)",
-            xaxis_tickangle=-30,  # Rotate labels for readability
-            title_font_size=16
+            yaxis_title="Total Spending ($)",
+            xaxis_tickangle=-30,
+            title_font_size=16,
+            margin=dict(l=40, r=40, t=40, b=100)  # Prevent labels from getting cut off
         )
 
-        st.plotly_chart(fig)
+        st.plotly_chart(fig, use_container_width=True)
         st.dataframe(spending_df)
+
 
 
 
 # Income Overview
 with income_tab:
     income_df = filtered_df[filtered_df["Action"] == "Income"]
-    
+
     if income_df.empty:
         st.warning("No income data available for the selected month.")
     else:
         st.subheader(f"Income Breakdown - {selected_month}")
 
-        # Aggregate income by source, take absolute values, and sort in descending order
+        # Aggregate income, make values absolute, and sort from highest to lowest
         income_sources = income_df.groupby("Description")["Amount"].sum().reset_index()
-        income_sources["Amount"] = income_sources["Amount"].abs()  # Convert all amounts to positive
-        income_sources = income_sources.sort_values(by="Amount", ascending=False)  # Sort highest to lowest
+        income_sources["Amount"] = income_sources["Amount"].abs()
+        income_sources = income_sources.sort_values(by="Amount", ascending=False)
 
-        # Create bar chart with dollar sign labels
+        # Create bar chart
         fig = px.bar(
             income_sources, 
             x="Description", 
@@ -95,34 +97,60 @@ with income_tab:
         )
 
         fig.update_traces(
-            marker_color="green",  # Differentiate income with color
-            textposition="outside",  # Move labels above bars
+            marker_color="green",
+            textposition="outside",
             textfont_size=12
         )
 
         fig.update_layout(
             xaxis_title="Source",
             yaxis_title="Total Income ($)",
-            xaxis_tickangle=-30,  # Rotate labels for readability
-            title_font_size=16
+            xaxis_tickangle=-30,
+            title_font_size=16,
+            margin=dict(l=40, r=40, t=40, b=100)  # Prevent cut-off
         )
 
-        st.plotly_chart(fig)
-        st.dataframe(income_sources)  # Show updated DataFrame with positive values
+        st.plotly_chart(fig, use_container_width=True)
+        st.dataframe(income_sources)
+
 
 
 # Savings Overview
 with savings_tab:
     savings_df = filtered_df[filtered_df["Action"] == "Savings"]
-    
+
     if savings_df.empty:
         st.warning("No savings data available for the selected month.")
     else:
         st.subheader(f"Savings Overview - {selected_month}")
+
+        # Aggregate savings trend
         savings_trend = savings_df.groupby("Day")["Amount"].sum().reset_index()
-        fig = px.line(savings_trend, x="Day", y="Amount", title="Savings Over Time")
-        st.plotly_chart(fig)
+
+        # Create line chart
+        fig = px.line(
+            savings_trend, 
+            x="Day", 
+            y="Amount", 
+            title="Savings Over Time",
+            markers=True  # Add data points
+        )
+
+        fig.update_traces(
+            line=dict(width=3),
+            marker=dict(size=8)
+        )
+
+        fig.update_layout(
+            xaxis_title="Day",
+            yaxis_title="Total Savings ($)",
+            title_font_size=16,
+            margin=dict(l=40, r=40, t=40, b=40)  # Prevent cut-off
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
         st.dataframe(savings_df)
+
 
 # Non-Categorized Transactions
 with other_tab:
